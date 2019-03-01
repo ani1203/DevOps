@@ -1,0 +1,36 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "aws sample template for creating a vpc with a public and a private subnet",
+    "Metadata": {},
+    "Parameters": {},
+    "Mappings": {},
+    "Conditions": {},
+    "Resources": {
+      "myvpc": {
+        "Type": "AWS::EC2::VPC",
+        "Properties": {
+          "CidrBlock": "10.0.0.0/16",
+          "Tags": [{ "Key": "Name", "Value":  "myvpc" }]
+        }
+      },
+      "privateSubnet": {
+        "Type": "AWS::EC2::Subnet",
+        "Properties": {
+          "AvailabilityZone": "ap-south-1b",
+          "VpcId": { "Ref": "myvpc" },
+          "CidrBlock": "10.0.2.0/24",
+          "Tags": [{ "Key": "Name", "Value":  "privateSubnet" }]
+        }
+      },
+      "publicSubnet": {
+        "Type": "AWS::EC2::Subnet",
+        "Properties": {
+          "AvailabilityZone": "ap-south-1a",
+          "VpcId": { "Ref": "myvpc" },
+          "CidrBlock": "10.0.1.0/24",
+          "Tags": [{ "Key": "Name", "Value":  "publicsubnet" }]
+        }
+      }
+    },
+    "Outputs": {}
+}

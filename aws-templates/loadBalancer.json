@@ -1,0 +1,29 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "sample template for creating a elastic load balancer ",
+    "Metadata": {},
+    "Parameters": {},
+    "Mappings": {},
+    "Conditions": {},
+    "Resources": {
+      "lb": {
+         "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+         "Properties": {
+            "AvailabilityZones" : [ "ap-south-1a" ],
+            "Listeners" : [ {
+               "InstancePort" : "80",
+               "InstanceProtocol" : "HTTP",
+               "LoadBalancerPort" : "80",
+               "Protocol" : "HTTP"
+            } ],
+            "Tags": [
+                  {
+                    "Key": "Name",
+                    "Value": "lb"
+                  }
+            ]
+         }
+      }
+    },
+    "Outputs": {}
+}
