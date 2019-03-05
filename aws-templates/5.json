@@ -1,0 +1,336 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "",
+  "Metadata": {},
+  "Parameters": {
+    "KeyName": {
+      "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+    },
+    "InstanceType": {
+      "Description": "WebServer EC2 instance type",
+      "Type": "String",
+      "Default": "t2.micro",
+      "AllowedValues": [
+        "t1.micro",
+        "t2.nano",
+        "t2.micro"
+      ],
+      "ConstraintDescription": "must be a valid EC2 instance type."
+    },
+    "DBName": {
+      "Default": "MyDatabase",
+      "Description": "The database name",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "64",
+      "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters."
+    },
+    "DBUser": {
+      "NoEcho": "true",
+      "Description": "The database admin account username",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "16",
+      "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters."
+    },
+    "DBPassword": {
+      "NoEcho": "true",
+      "Description": "The database admin account password",
+      "Type": "String",
+      "MinLength": "8",
+      "MaxLength": "41",
+      "AllowedPattern": "[a-zA-Z0-9]*",
+      "ConstraintDescription": "must contain only alphanumeric characters."
+    }
+  },
+  "Mappings": {},
+  "Conditions": {},
+  "Resources": {
+    "myvpc": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "myvpc"
+          }
+        ]
+      }
+    },
+    "publicsubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "MapPublicIpOnLaunch": "true",
+        "AvailabilityZone": "ap-south-1a",
+        "VpcId": {
+          "Ref": "myvpc"
+        },
+        "CidrBlock": "10.0.1.0/24",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "publicsubnet"
+          }
+        ]
+      }
+    },
+    "privatesubnet1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": "ap-south-1b",
+        "VpcId": {
+          "Ref": "myvpc"
+        },
+        "CidrBlock": "10.0.2.0/24",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "privatesubnet1"
+          }
+        ]
+      }
+    },
+    "privatesubnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": "ap-south-1a",
+        "VpcId": {
+          "Ref": "myvpc"
+        },
+        "CidrBlock": "10.0.3.0/24",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "privatesubnet2"
+          }
+        ]
+      }
+    },
+    "myroute": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "myvpc"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "myroute"
+          }
+        ]
+      }
+    },
+    "routeTableAssocName": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "publicsubnet"
+        },
+        "RouteTableId": {
+          "Ref": "myroute"
+        }
+      }
+    },
+    "routeName": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "myroute"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "myigw"
+        }
+      }
+    },
+    "myigw": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "mygateway"
+          }
+        ]
+      }
+    },
+    "AttachGateway": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "myvpc"
+        },
+        "InternetGatewayId": {
+          "Ref": "myigw"
+        }
+      }
+    },
+    "privateinstance": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "SubnetId": {
+          "Ref": "privatesubnet1"
+        },
+        "ImageId": "ami-0ff6b226f34748d11",
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "SecurityGroupIds": [
+          {
+            "Ref": "instancesecuritygroup"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "privateserver"
+          }
+        ]
+      }
+    },
+    "instancesecuritygroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "ec2 security group",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80",
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "VpcId": {
+          "Ref": "myvpc"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "sg"
+          }
+        ]
+      }
+    },
+    "rdsDBInstance": {
+      "Type": "AWS::RDS::DBInstance",
+      "Properties": {
+        "AllocatedStorage": "20",
+        "DBInstanceClass": "db.t2.micro",
+        "AllowMajorVersionUpgrade": "false",
+        "AutoMinorVersionUpgrade": "false",
+        "BackupRetentionPeriod": "7",
+        "AvailabilityZone": "ap-south-1a",
+        "DBInstanceIdentifier": "myrds",
+        "DBName": {
+          "Ref": "DBName"
+        },
+        "Engine": "MySQL",
+        "EngineVersion": "5.6.40",
+        "MasterUsername": {
+          "Ref": "DBUser"
+        },
+        "MasterUserPassword": {
+          "Ref": "DBPassword"
+        },
+        "MultiAZ": "false",
+        "Port": "3306",
+        "PubliclyAccessible": "false",
+        "StorageType": "gp2",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "newdatabase"
+          }
+        ]
+      }
+    },
+    "rdsDBSubnetGroup": {
+      "Type": "AWS::RDS::DBSubnetGroup",
+      "Properties": {
+        "DBSubnetGroupDescription": "creating a subnet group for rds",
+        "SubnetIds": [
+          {
+            "Ref": "privatesubnet1"
+          },
+          {
+            "Ref": "privatesubnet2"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rdssubnetgroup"
+          }
+        ]
+      }
+    },
+    "publicinstance": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "SubnetId": {
+          "Ref": "publicsubnet"
+        },
+        "ImageId": "ami-0d773a3b7bb2bb1c1",
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "SecurityGroupIds": [
+          {
+            "Ref": "instancesecuritygroup"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "publicserver"
+          }
+        ]
+      }
+    },
+    "myloadbalancer": {
+       "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+       "Properties": {
+          "Subnets": [{ "Ref": "publicsubnet" },{ "Ref": "privatesubnet1" }],
+          "Listeners" : [ {
+             "InstancePort" : "80",
+             "InstanceProtocol" : "HTTP",
+             "LoadBalancerPort" : "80",
+             "Protocol" : "HTTP"
+          } ],
+          "Instances":[{ "Ref": "privateinstance" },{ "Ref": "publicinstance" }],
+          "Tags": [
+                {
+                  "Key": "Name",
+                  "Value": "myloadbalancer"
+                }
+          ]
+       }
+    },
+    "s3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "AccessControl": "PublicRead",
+        "BucketName": "mybucket.3",
+        "Tags": [{ "Key": "Name", "Value":  "demobucket" }]
+      }
+    }
+  },
+  "Outputs": {}
+}
